@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Earthquake Visualization</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="" />
+
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    #map {
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- The div that holds our map -->
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+  <!-- D3 JavaScript -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <script>
+    var myMap = L.map('map').setView([37.09, -95.71], 3);
+
+    // Add a layer 
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(myMap);
+
+    // Fetch the GeoJSON data from the USGS URL
+    fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson")
+      .then(response => response.json())
+      .then(data => {
+        L.geoJSON(data, {
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: feature.properties.mag * 4,
+              fillColor: getColor(feature.geometry.coordinates[2]),
+              color: "#000",
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: function (feature, layer) {
+            layer.bindPopup("<h3>Magnitude: " + feature.properties.mag + "</h3><h3>Location: " +
+              feature.properties.place + "</h3><hr><p>" + new Date(feature.properties.time) + "</p>");
+          }
+        }).addTo(myMap);
+      })
+      .catch(error => {
+        console.error('Error fetching the GeoJSON data: ', error);
+      });
+
+    // Legend
+    var legend = L.control({ position: 'bottomright' });
+
+    legend.onAdd = function (map) {
+      var div = L.DomUtil.create('div', 'info legend'),
+        depths = [-10, 10, 30, 50, 70, 90],
+        labels = [];
+
+      div.innerHTML += '<h4>Depth</h4>';
+
+      // Depth intervals colored square for each interval
+      for (var i = 0; i < depths.length; i++) {
+        var nextDepth = depths[i + 1] ? depths[i + 1] : 90;
+        div.innerHTML +=
+          '<i style="background:' + getColor(depths[i] + 1) + '; width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.8;"></i>' +
+          depths[i] + (depths[i + 1] ? '&ndash;' + nextDepth + ' km' : '+ km') + '<br>';
+      }
+
+      return div;
+    };
+
+    legend.addTo(myMap);
+
+    // Function to determine color based on depth
+    function getColor(depth) {
+      return depth > 90 ? '#ea2c2c' :
+        depth > 70 ? '#ea822c' :
+          depth > 50 ? '#ee9c00' :
+            depth > 30 ? '#eecc00' :
+              depth > 10 ? '#d4ee00' :
+                '#98ee00';
+    }
+  </script>
+</body>
+
+</html>
